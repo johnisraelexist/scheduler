@@ -2,11 +2,14 @@ package com.exist.scheduler.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
-@Data
 @Entity
+@Getter
+@Setter
 public class Task {
 
     @Id
@@ -16,7 +19,7 @@ public class Task {
     private String name;
     private int duration;
 
-    @ManyToMany
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JoinTable(
             name = "task_dependencies",
             joinColumns = @JoinColumn(name = "task_id"),
@@ -24,12 +27,18 @@ public class Task {
     )
     private List<Task> dependencies;
 
-    public Task() {
-    }
+    @ManyToOne
+    @JoinColumn(name = "project_plan_id")
+    private ProjectPlan projectPlan;
 
-    public Task(String name, int duration, List<Task> dependencies) {
+    // Constructors
+    public Task() {}
+
+    public Task(String name, int duration, List<Task> dependencies, ProjectPlan projectPlan) {
         this.name = name;
         this.duration = duration;
         this.dependencies = dependencies;
+        this.projectPlan = projectPlan;
     }
+
 }

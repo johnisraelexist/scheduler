@@ -1,6 +1,7 @@
 package com.exist.scheduler.mapper;
 
 import com.exist.scheduler.dto.TaskDTO;
+import com.exist.scheduler.model.ProjectPlan;
 import com.exist.scheduler.model.Task;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +16,9 @@ public class TaskMapper {
                 .map(this::toDTO)
                 .collect(Collectors.toList());
 
-        return new TaskDTO(task.getId(), task.getName(), task.getDuration(), dependencies);
+        ProjectPlan projectPlan = task.getProjectPlan();
+
+        return new TaskDTO(task.getId(), task.getName(), task.getDuration(), dependencies, projectPlan);
     }
 
     public Task toEntity(TaskDTO taskDTO) {
@@ -23,6 +26,8 @@ public class TaskMapper {
                 .map(this::toEntity)
                 .collect(Collectors.toList());
 
-        return new Task(taskDTO.getName(), taskDTO.getDuration(), dependencies);
+        ProjectPlan projectPlan = taskDTO.getProjectPlan();
+
+        return new Task(taskDTO.getName(), taskDTO.getDuration(), dependencies, projectPlan);
     }
 }

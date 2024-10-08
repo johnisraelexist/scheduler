@@ -27,7 +27,7 @@ public class ConsoleAppRunner implements CommandLineRunner {
         // Calculate the schedule
         Map<TaskDTO, LocalDate[]> schedule = taskScheduler.calculateSchedule(tasks);
 
-        // Output the schedule
+        // Output the schedule without duplicates
         System.out.println("Project Task Schedule:");
         schedule.forEach((task, dates) -> {
             System.out.println(task.getName() + " -> Start: " + dates[0] + ", End: " + dates[1]);
