@@ -8,6 +8,7 @@ class SchedulerApplicationTests {
 
 	@Test
 	void contextLoads() {
+		//default test
 	}
 
 }

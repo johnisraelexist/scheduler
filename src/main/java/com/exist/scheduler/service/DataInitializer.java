@@ -20,6 +20,7 @@ public class DataInitializer {
     @EventListener(ContextRefreshedEvent.class)
     public void init() {
         // Create first Project Plan: Website Development
+
         ProjectPlanDTO websiteProject = new ProjectPlanDTO();
         websiteProject.setName("Website Development");
 
@@ -35,7 +36,7 @@ public class DataInitializer {
         projectPlanService.addTaskToProjectPlan(developmentTask);
         projectPlanService.addTaskToProjectPlan(testingTask);
 
-        // Create second Project Plan: Mobile App Development
+        //Create second Project Plan: Mobile App Development
         ProjectPlanDTO mobileAppProject = new ProjectPlanDTO();
         mobileAppProject.setName("Mobile App Development");
 

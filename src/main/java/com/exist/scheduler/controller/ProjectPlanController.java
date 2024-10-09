@@ -2,12 +2,12 @@ package com.exist.scheduler.controller;
 
 import com.exist.scheduler.dto.ProjectPlanDTO;
 import com.exist.scheduler.dto.TaskDTO;
+import com.exist.scheduler.model.ProjectPlanResponse;
 import com.exist.scheduler.service.ProjectPlanService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -19,17 +19,27 @@ public class ProjectPlanController {
         this.projectPlanService = projectPlanService;
     }
 
-    // Endpoint to create a new Project Plan with optional tasks
     @PostMapping("/create")
-    public ResponseEntity<String> createProjectPlan(@RequestBody ProjectPlanDTO projectPlanDTO) {
+    public ResponseEntity<ProjectPlanResponse> createProjectPlan(@RequestBody ProjectPlanDTO projectPlanDTO) {
         ProjectPlanDTO savedProject = projectPlanService.createProjectPlan(projectPlanDTO);
-        return ResponseEntity.ok("Project plan created with ID: " + savedProject.getId());
+        ProjectPlanResponse projectPlanResponse = new ProjectPlanResponse(String.format("Project plan created with ID: %s",
+                savedProject.getId()) , projectPlanService.toProjectPlanDetails());
+        return ResponseEntity.ok(projectPlanResponse);
     }
 
-    // Endpoint to add a task to a project plan (if required separately)
     @PostMapping("/add-task")
     public ResponseEntity<String> addTaskToProjectPlan(@RequestBody TaskDTO taskDTO) {
-        projectPlanService.addTaskToProjectPlan(taskDTO);
-        return ResponseEntity.ok("Task added to project plan with ID: " + taskDTO.getProjectPlanId());
+        try {
+            projectPlanService.addTaskToProjectPlan(taskDTO);
+            return ResponseEntity.ok("Task added to project plan with ID: " + taskDTO.getProjectPlanId());
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/retrieve-all")
+    public ResponseEntity<ProjectPlanResponse> retrieveAllProjectPlan(){
+        ProjectPlanResponse projectPlanResponse = new ProjectPlanResponse(("All Project Plans"), projectPlanService.toProjectPlanDetails());
+        return ResponseEntity.ok(projectPlanResponse);
     }
 }
