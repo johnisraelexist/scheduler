@@ -9,6 +9,7 @@ import java.util.List;
 @Setter
 public class TaskDetails {
     private String taskName;
+    private Long taskId;
     private int duration;
     private String startDate;
     private String endDate;

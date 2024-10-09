@@ -33,28 +33,22 @@ public class ProjectPlanService {
 
     @Transactional
     public ProjectPlanDTO createProjectPlan(ProjectPlanDTO projectPlanDTO) {
-
         // Convert and save ProjectPlan
-
         ProjectPlan projectPlan = projectPlanMapper.toEntity(projectPlanDTO);
         projectPlan = projectPlanRepository.save(projectPlan);
 
         // Handle tasks in ProjectPlanDTO
-
         if (projectPlanDTO.getTasks() != null && !projectPlanDTO.getTasks().isEmpty()) {
+            if (projectPlan.getTasks() == null) {
+                projectPlan.setTasks(new ArrayList<>());  // Initialize the task list if null
+            }
             for (TaskDTO taskDTO : projectPlanDTO.getTasks()) {
                 // Ensure the task is linked to the project by setting projectPlanId
                 taskDTO.setProjectPlanId(projectPlan.getId());
                 Task task = projectPlanMapper.toTaskEntity(taskDTO, projectPlan);
-                taskRepository.save(task);
+                taskRepository.save(task);  // Save each task to the repository
 
-                if (projectPlan.getTasks() != null && projectPlan.getTasks().isEmpty()) {
-                    projectPlan.getTasks().add(task); // Add the task to the project's task list
-                } else {
-                    List<Task> tasks = new ArrayList<>();
-                    tasks.add(task);
-                    projectPlan.setTasks(tasks);
-                }
+                projectPlan.getTasks().add(task);  // Add each task to the project's task list
             }
         }
 
@@ -114,19 +108,16 @@ public class ProjectPlanService {
     }
 
     public List<ProjectPlanDetails> toProjectPlanDetails() {
-
         List<ProjectPlan> projectPlans = getAllProjectPlans();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy");
         List<ProjectPlanDetails> projectPlanDetailsList = new ArrayList<>();
 
         for (ProjectPlan projectPlan : projectPlans) {
-            List<TaskDetails> taskDetailsList = new ArrayList<>();
             ProjectPlanDetails planDetails = new ProjectPlanDetails();
             LocalDate[] projectDates = calculateProjectDates(projectPlan);
             String projectStart = projectDates[0].format(formatter);
             String projectEnd = projectDates[1].format(formatter);
 
-            // Calculate the total duration in days using ChronoUnit.DAYS.between
             long totalDuration = ChronoUnit.DAYS.between(projectDates[0], projectDates[1]);
 
             planDetails.setProjectPlanName(projectPlan.getName());
@@ -135,26 +126,27 @@ public class ProjectPlanService {
             planDetails.setProjectStart(projectStart);
             planDetails.setProjectEnd(projectEnd);
 
-            projectPlan.getTasks().forEach(task -> {
-                List<String> dependencies = new ArrayList<>();
+            List<TaskDetails> taskDetailsList = new ArrayList<>();
+            for (Task task : projectPlan.getTasks()) {
                 TaskDetails taskDetails = new TaskDetails();
                 LocalDate[] taskDates = calculateTaskDates(task);
                 String taskStart = taskDates[0].format(formatter);
                 String taskEnd = taskDates[1].format(formatter);
+
                 taskDetails.setTaskName(task.getName());
+                taskDetails.setTaskId(task.getId());
                 taskDetails.setDuration(task.getDuration());
                 taskDetails.setStartDate(taskStart);
                 taskDetails.setEndDate(taskEnd);
 
-                for (Task depTask : task.getDependencies()) {
-                    Task dependency = taskRepository.findByName(depTask.getName());
-                    if (dependency != null) {
-                        dependencies.add(dependency.getName());
-                    }
-                }
+                // Get the dependencies directly from the task, no need to query
+                List<String> dependencies = task.getDependencies().stream()
+                        .map(Task::getName)
+                        .toList();
+
                 taskDetails.setDependencies(dependencies);
                 taskDetailsList.add(taskDetails);
-            });
+            }
             planDetails.setTasks(taskDetailsList);
             projectPlanDetailsList.add(planDetails);
         }

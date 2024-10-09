@@ -7,6 +7,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Component
 public class DataInitializer {
@@ -28,9 +29,9 @@ public class DataInitializer {
         ProjectPlanDTO savedWebsiteProject = projectPlanService.createProjectPlan(websiteProject);
 
         // Create tasks for the first project using the projectPlanId
-        TaskDTO designTask = new TaskDTO(null, "Design", 5, Arrays.asList(), savedWebsiteProject.getId());
-        TaskDTO developmentTask = new TaskDTO(null, "Development", 10, Arrays.asList(designTask), savedWebsiteProject.getId());
-        TaskDTO testingTask = new TaskDTO(null, "Testing", 3, Arrays.asList(developmentTask), savedWebsiteProject.getId());
+        TaskDTO designTask = new TaskDTO(null, "Design", 5, List.of(), savedWebsiteProject.getId());
+        TaskDTO developmentTask = new TaskDTO(null, "Development", 10, List.of(1L), savedWebsiteProject.getId());
+        TaskDTO testingTask = new TaskDTO(null, "Testing", 3, List.of(2L), savedWebsiteProject.getId());
 
         projectPlanService.addTaskToProjectPlan(designTask);
         projectPlanService.addTaskToProjectPlan(developmentTask);
@@ -44,9 +45,9 @@ public class DataInitializer {
         ProjectPlanDTO savedMobileAppProject = projectPlanService.createProjectPlan(mobileAppProject);
 
         // Create tasks for the second project
-        TaskDTO planningTask = new TaskDTO(null, "Planning", 4, Arrays.asList(), savedMobileAppProject.getId());
-        TaskDTO codingTask = new TaskDTO(null, "Coding", 12, Arrays.asList(planningTask), savedMobileAppProject.getId());
-        TaskDTO reviewTask = new TaskDTO(null, "Review", 2, Arrays.asList(codingTask), savedMobileAppProject.getId());
+        TaskDTO planningTask = new TaskDTO(null, "Planning", 4, List.of(), savedMobileAppProject.getId());
+        TaskDTO codingTask = new TaskDTO(null, "Coding", 12, List.of(4L), savedMobileAppProject.getId());
+        TaskDTO reviewTask = new TaskDTO(null, "Review", 2, List.of(5L), savedMobileAppProject.getId());
 
         projectPlanService.addTaskToProjectPlan(planningTask);
         projectPlanService.addTaskToProjectPlan(codingTask);

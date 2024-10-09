@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Component
 public class ProjectPlanMapper {
@@ -30,12 +31,13 @@ public class ProjectPlanMapper {
     public Task toTaskEntity(TaskDTO taskDTO, ProjectPlan projectPlan) {
         List<Task> dependencies = new ArrayList<>();
 
-        // Convert task dependencies to Task entities
-        for (TaskDTO depDTO : taskDTO.getDependencies()) {
-            Task dependency = taskRepository.findByName(depDTO.getName());
-            if (dependency != null) {
-                dependencies.add(dependency);
-            }
+        // Convert task dependency IDs to Task entities
+        for (Long depId : taskDTO.getDependencies()) {
+            // Find each dependency by its ID from the repository
+            Task dependency = taskRepository.findById(depId)
+                    .orElseThrow(() -> new NoSuchElementException(
+                            String.format("Task with ID: %s not found", depId)));
+            dependencies.add(dependency);
         }
 
         // Create new Task with dependencies and project plan reference
@@ -67,13 +69,14 @@ public class ProjectPlanMapper {
         taskDTO.setName(task.getName());
         taskDTO.setDuration(task.getDuration());
 
-        // Convert Task dependencies to TaskDTOs
-        List<TaskDTO> dependencyDTOs = new ArrayList<>();
+        // Convert Task dependencies to a list of IDs (no recursive TaskDTO conversion)
+        List<Long> dependencyIds = new ArrayList<>();
         for (Task dependency : task.getDependencies()) {
-            dependencyDTOs.add(toTaskDTO(dependency));  // Recursive conversion for dependencies
+            dependencyIds.add(dependency.getId());  // Add the dependency ID instead of converting to TaskDTO
         }
-        taskDTO.setDependencies(dependencyDTOs);
+        taskDTO.setDependencies(dependencyIds);  // Set the dependencies as a list of IDs
         taskDTO.setProjectPlanId(task.getProjectPlan().getId());
+
         return taskDTO;
     }
 }
