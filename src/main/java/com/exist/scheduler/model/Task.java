@@ -1,7 +1,6 @@
 package com.exist.scheduler.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,7 +18,7 @@ public class Task {
     private String name;
     private int duration;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(
             name = "task_dependencies",
             joinColumns = @JoinColumn(name = "task_id"),

@@ -19,7 +19,7 @@ public class TaskScheduler {
             LocalDate startDate;
 
             // If the task has dependencies, calculate its start date based on its dependencies
-            if (task.isHasDependencies() && task.getDependencies() != null && !task.getDependencies().isEmpty()) {
+            if (task.getDependencies() != null && !task.getDependencies().isEmpty()) {
                 startDate = calculateStartDate(task, taskSchedule);
             } else {
                 // If the task has no dependencies, it can start immediately

@@ -17,7 +17,7 @@ public class ProjectPlan {
 
     private String name;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "projectPlan", fetch = FetchType.LAZY)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "projectPlan", fetch = FetchType.EAGER)
     private List<Task> tasks;
 
     // Constructors

@@ -2,6 +2,7 @@ package com.exist.scheduler.service;
 
 import com.exist.scheduler.dto.ProjectPlanDTO;
 import com.exist.scheduler.dto.TaskDTO;
+import com.exist.scheduler.mapper.ProjectPlanMapper;
 import com.exist.scheduler.model.ProjectPlan;
 import com.exist.scheduler.model.Task;
 import com.exist.scheduler.repository.ProjectPlanRepository;
@@ -18,35 +19,46 @@ public class ProjectPlanService {
 
     private final ProjectPlanRepository projectPlanRepository;
     private final TaskRepository taskRepository;
+    private final ProjectPlanMapper projectPlanMapper;
 
-    public ProjectPlanService(ProjectPlanRepository projectPlanRepository, TaskRepository taskRepository) {
+    public ProjectPlanService(ProjectPlanRepository projectPlanRepository, TaskRepository taskRepository, ProjectPlanMapper projectPlanMapper) {
         this.projectPlanRepository = projectPlanRepository;
         this.taskRepository = taskRepository;
+        this.projectPlanMapper = projectPlanMapper;
     }
 
     @Transactional
-    public ProjectPlan createProjectPlan(ProjectPlanDTO projectPlanDTO) {
-        List<Task> tasks = new ArrayList<>();
-        ProjectPlan projectPlan = new ProjectPlan(projectPlanDTO.getName(), tasks);
+    public ProjectPlanDTO createProjectPlan(ProjectPlanDTO projectPlanDTO) {
+        // Convert and save ProjectPlan
+        ProjectPlan projectPlan = projectPlanMapper.toEntity(projectPlanDTO);
         projectPlan = projectPlanRepository.save(projectPlan);
 
-        for (TaskDTO taskDTO : projectPlanDTO.getTasks()) {
-            // Dynamically resolve dependencies
-            List<Task> dependencies = new ArrayList<>();
-            for (TaskDTO depTask : taskDTO.getDependencies()) {
-                Task dependency = taskRepository.findByName(depTask.getName());
-                if (dependency != null) {
-                    dependencies.add(dependency);
+        // Handle tasks in ProjectPlanDTO
+        if (projectPlanDTO.getTasks() != null && !projectPlanDTO.getTasks().isEmpty()) {
+            for (TaskDTO taskDTO : projectPlanDTO.getTasks()) {
+                // Ensure the task is linked to the project by setting projectPlanId
+                taskDTO.setProjectPlanId(projectPlan.getId());
+                Task task = projectPlanMapper.toTaskEntity(taskDTO, projectPlan);
+                taskRepository.save(task);
+                if (projectPlan.getTasks() != null && projectPlan.getTasks().isEmpty()) {
+                    projectPlan.getTasks().add(task); // Add the task to the project's task list
+                } else {
+                    List<Task> tasks = new ArrayList<>();
+                    tasks.add(task);
+                    projectPlan.setTasks(tasks);
                 }
             }
-
-            Task task = new Task(taskDTO.getName(), taskDTO.getDuration(), dependencies, projectPlan);
-            tasks.add(task);
-            taskRepository.save(task);
         }
 
-        projectPlan.setTasks(tasks);
-        return projectPlan;
+        return projectPlanMapper.toDTO(projectPlan);  // Return the saved project with tasks
+    }
+
+    @Transactional
+    public void addTaskToProjectPlan(TaskDTO taskDTO) {
+        ProjectPlan projectPlan = projectPlanRepository.findById(taskDTO.getProjectPlanId()).orElseThrow();
+        Task task = projectPlanMapper.toTaskEntity(taskDTO, projectPlan);
+        projectPlan.getTasks().add(task);
+        taskRepository.save(task);
     }
 
     public LocalDate[] calculateProjectDates(ProjectPlan projectPlan) {
@@ -63,7 +75,7 @@ public class ProjectPlanService {
         return new LocalDate[]{projectStart, projectEnd};
     }
 
-    private LocalDate[] calculateTaskDates(Task task) {
+    public LocalDate[] calculateTaskDates(Task task) {
         LocalDate startDate = LocalDate.now();
 
         for (Task dependency : task.getDependencies()) {
@@ -75,5 +87,14 @@ public class ProjectPlanService {
 
         LocalDate endDate = startDate.plusDays(task.getDuration());
         return new LocalDate[]{startDate, endDate};
+    }
+
+    public List<ProjectPlan> getAllProjectPlans() {
+        return projectPlanRepository.findAll();
+    }
+
+    public ProjectPlanDTO getProjectPlanDTO(Long projectId) {
+        ProjectPlan projectPlan = projectPlanRepository.findById(projectId).orElseThrow();
+        return projectPlanMapper.toDTO(projectPlan);
     }
 }

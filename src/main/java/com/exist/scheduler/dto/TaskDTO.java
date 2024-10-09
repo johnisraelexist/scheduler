@@ -1,6 +1,5 @@
 package com.exist.scheduler.dto;
 
-import com.exist.scheduler.model.ProjectPlan;
 import lombok.Data;
 
 import java.util.List;
@@ -12,16 +11,16 @@ public class TaskDTO {
     private String name;
     private int duration;
     private List<TaskDTO> dependencies;
-    private ProjectPlan projectPlan;
+    private Long projectPlanId;  // Only include the ID of the project plan
 
     public TaskDTO() {
     }
 
-    public TaskDTO(Long id, String name, int duration, List<TaskDTO> dependencies, ProjectPlan projectPlan) {
+    public TaskDTO(Long id, String name, int duration, List<TaskDTO> dependencies, Long projectPlanId) {
         this.id = id;
         this.name = name;
         this.duration = duration;
         this.dependencies = dependencies;
-        this.projectPlan = projectPlan;
+        this.projectPlanId = projectPlanId;
     }
 }
