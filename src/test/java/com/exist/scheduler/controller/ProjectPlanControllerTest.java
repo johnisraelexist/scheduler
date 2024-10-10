@@ -14,10 +14,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Collections;
 import java.util.NoSuchElementException;
 
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @WebMvcTest(ProjectPlanController.class)
@@ -52,7 +52,7 @@ class ProjectPlanControllerTest {
         TaskDTO taskDTO = new TaskDTO();
         taskDTO.setProjectPlanId(1L);
 
-        Mockito.doNothing().when(projectPlanService).addTaskToProjectPlan(any(TaskDTO.class));
+        doNothing().when(projectPlanService).addTaskToProjectPlan(any(TaskDTO.class));
 
         String requestBody = "{\"taskName\":\"Development\",\"duration\":10,\"projectPlanId\":1}";
 
@@ -93,5 +93,68 @@ class ProjectPlanControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("All Project Plans"))
                 .andDo(print());
+    }
+
+    @Test
+    void testUpdateTask() throws Exception {
+        Long taskId = 1L;
+        TaskDTO taskDTO = new TaskDTO();
+        taskDTO.setName("Updated Task");
+        taskDTO.setDuration(5);
+
+        doNothing().when(projectPlanService).updateTask(taskId, taskDTO);
+
+        mockMvc.perform(put("/api/projects/tasks/{taskId}", taskId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Updated Task\",\"duration\":5}")
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().string("Task updated and affected dates recalculated."));
+
+        verify(projectPlanService).updateTask(taskId, taskDTO);
+    }
+
+    @Test
+    void testUpdateProject() throws Exception {
+        Long projectId = 1L;
+        ProjectPlanDTO projectPlanDTO = new ProjectPlanDTO();
+        projectPlanDTO.setName("Updated Project");
+
+        doNothing().when(projectPlanService).updateProject(projectId, projectPlanDTO);
+
+        mockMvc.perform(put("/api/projects/{projectId}", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Updated Project\"}")
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().string("Project updated and affected dates recalculated."));
+
+        verify(projectPlanService).updateProject(projectId, projectPlanDTO);
+    }
+
+    @Test
+    void testDeleteTask() throws Exception {
+        Long taskId = 1L;
+
+        doNothing().when(projectPlanService).deleteTask(taskId);
+
+        mockMvc.perform(delete("/api/projects/tasks/{taskId}", taskId))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Task deleted."));
+
+        verify(projectPlanService).deleteTask(taskId);
+    }
+
+    @Test
+    void testDeleteProject() throws Exception {
+        Long projectId = 1L;
+
+        doNothing().when(projectPlanService).deleteProject(projectId);
+
+        mockMvc.perform(delete("/api/projects/{projectId}", projectId))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Project deleted."));
+
+        verify(projectPlanService).deleteProject(projectId);
     }
 }

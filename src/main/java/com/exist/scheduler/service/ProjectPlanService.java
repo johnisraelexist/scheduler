@@ -68,7 +68,6 @@ public class ProjectPlanService {
         LocalDate latestTaskEnd = projectStart;
 
         for (Task task : projectPlan.getTasks()) {
-            // Calculate task start and end dates
             LocalDate[] taskDates = calculateTaskDates(task, projectStart);
 
             if (taskDates[0].isBefore(earliestTaskStart)) {
@@ -80,13 +79,14 @@ public class ProjectPlanService {
             }
         }
 
-        // Set the project's start and end dates to the calculated values
         projectPlan.setProjectStartDate(earliestTaskStart);
         projectPlan.setProjectEndDate(latestTaskEnd);
 
-        projectPlan.setProjectDuration(ChronoUnit.DAYS.between(earliestTaskStart, latestTaskEnd));
+        // Compute the total number of days (including weekends)
+        long totalDays = Math.abs(ChronoUnit.DAYS.between(earliestTaskStart, latestTaskEnd));
 
-        // Return the calculated start and end dates
+        projectPlan.setProjectDuration(totalDays);
+
         return new LocalDate[]{earliestTaskStart, latestTaskEnd};
     }
 
@@ -135,6 +135,7 @@ public class ProjectPlanService {
             planDetails.setProjectPlanName(projectPlan.getName());
             planDetails.setProjectId(projectPlan.getId());
             planDetails.setTotalDuration(projectPlan.getProjectDuration());
+            planDetails.setTotalWorkingDays(projectPlan.getTotalWorkingDays());
 
             // Handle null projectStartDate and projectEndDate
             String projectStart = (projectPlan.getProjectStartDate() != null)
@@ -266,9 +267,30 @@ public class ProjectPlanService {
                     .filter(endDate -> endDate.isAfter(finalLatestEndDate))  // Check if task end is later
                     .orElse(latestEndDate);  // Keep current if not later
         }
+
+        // Compute the total number of working days (excluding weekends)
+        long totalWorkingDays = calculateWorkingDays(earliestStartDate, latestEndDate);
+
+        projectPlan.setTotalWorkingDays(totalWorkingDays);
         projectPlan.setProjectStartDate(earliestStartDate);
         projectPlan.setProjectEndDate(latestEndDate);
         projectPlan.setProjectDuration(Math.abs(ChronoUnit.DAYS.between(earliestStartDate, latestEndDate)));
+    }
+
+    public long calculateWorkingDays(LocalDate start, LocalDate end) {
+        long workingDays = 0;
+        LocalDate currentDate = start;
+
+        while (!currentDate.isAfter(end)) {
+            // Count only weekdays (Monday to Friday)
+            if (currentDate.getDayOfWeek() != DayOfWeek.SATURDAY
+                    && currentDate.getDayOfWeek() != DayOfWeek.SUNDAY) {
+                workingDays++;
+            }
+            currentDate = currentDate.plusDays(1);
+        }
+
+        return workingDays;
     }
 
     public void deleteTask(Long taskId) {

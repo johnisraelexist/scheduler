@@ -11,6 +11,7 @@ public class ProjectPlanDetails {
     private String projectPlanName;
     private long projectId;
     private long totalDuration;
+    private long totalWorkingDays;
     private String projectStart;
     private String projectEnd;
     private List<TaskDetails> tasks;

@@ -24,6 +24,7 @@ public class ProjectPlan {
     private LocalDate projectStartDate;
     private LocalDate projectEndDate;
     private long projectDuration;
+    private long totalWorkingDays;
 
     // Constructors
     public ProjectPlan() {

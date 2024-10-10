@@ -9,7 +9,11 @@ import com.exist.scheduler.model.Task;
 import com.exist.scheduler.repository.ProjectPlanRepository;
 import com.exist.scheduler.repository.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -19,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -262,5 +267,26 @@ class ProjectPlanServiceTest {
         assertNotNull(task2.getTaskStartDate());
         assertNotNull(task2.getTaskEndDate());
         assertEquals(task2.getTaskEndDate(), projectPlan.getProjectEndDate());
+    }
+
+    // Method source providing different test cases
+    static Stream<Arguments> workingDaysTestCases() {
+        return Stream.of(
+                Arguments.of(LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 5), 5, "Weekdays only"),  // Monday to Friday
+                Arguments.of(LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 7), 5, "Includes weekend"),  // Monday to Sunday
+                Arguments.of(LocalDate.of(2024, 1, 2), LocalDate.of(2024, 1, 2), 1, "Single weekday"),  // Tuesday (1 day)
+                Arguments.of(LocalDate.of(2024, 1, 6), LocalDate.of(2024, 1, 6), 0, "Single weekend"),  // Saturday (0 working days)
+                Arguments.of(LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 1), 1, "Empty range on weekday"),  // Monday (1 working day)
+                Arguments.of(LocalDate.of(2024, 1, 6), LocalDate.of(2024, 1, 10), 3, "Start weekend, end weekday"),  // Saturday to Wednesday
+                Arguments.of(LocalDate.of(2024, 1, 3), LocalDate.of(2024, 1, 7), 3, "Start weekday, end weekend")  // Wednesday to Sunday
+        );
+    }
+
+    @DisplayName("Parameterized test for calculateWorkingDays with various date ranges")
+    @ParameterizedTest(name = "{index} => start={0}, end={1}, expected={2}, scenario={3}")
+    @MethodSource("workingDaysTestCases")
+    void testCalculateWorkingDays(LocalDate start, LocalDate end, long expected, String scenario) {
+        long workingDays = projectPlanService.calculateWorkingDays(start, end);
+        assertEquals(expected, workingDays, "Test failed for scenario: " + scenario);
     }
 }
