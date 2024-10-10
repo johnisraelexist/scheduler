@@ -35,7 +35,6 @@ class ProjectPlanControllerTest {
         ProjectPlanDTO mockProjectPlan = new ProjectPlanDTO();
         mockProjectPlan.setId(1L);
         when(projectPlanService.createProjectPlan(any(ProjectPlanDTO.class))).thenReturn(mockProjectPlan);
-        when(projectPlanService.toProjectPlanDetails()).thenReturn(Collections.emptyList());
 
         String requestBody = "{\"name\":\"New Project\"}";
 
@@ -43,7 +42,7 @@ class ProjectPlanControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Project plan created with ID: 1"))
+                .andExpect(content().string("Project plan created with ID: 1"))
                 .andDo(print());
     }
 

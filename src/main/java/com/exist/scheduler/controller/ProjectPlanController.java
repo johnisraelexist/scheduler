@@ -20,11 +20,9 @@ public class ProjectPlanController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<ProjectPlanResponse> createProjectPlan(@RequestBody ProjectPlanDTO projectPlanDTO) {
+    public ResponseEntity<String> createProjectPlan(@RequestBody ProjectPlanDTO projectPlanDTO) {
         ProjectPlanDTO savedProject = projectPlanService.createProjectPlan(projectPlanDTO);
-        ProjectPlanResponse projectPlanResponse = new ProjectPlanResponse(String.format("Project plan created with ID: %s",
-                savedProject.getId()) , projectPlanService.toProjectPlanDetails());
-        return ResponseEntity.ok(projectPlanResponse);
+        return ResponseEntity.ok(String.format("Project plan created with ID: %s", savedProject.getId()));
     }
 
     @PostMapping("/add-task")

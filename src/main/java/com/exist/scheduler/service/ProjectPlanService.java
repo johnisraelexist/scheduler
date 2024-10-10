@@ -39,7 +39,9 @@ public class ProjectPlanService {
         projectPlan = projectPlanRepository.save(projectPlan);
 
         // Recalculate task and project dates
-        recalculateTaskAndProjectDates(projectPlan);
+        if (Optional.ofNullable(projectPlan.getTasks()).isPresent()) {
+            recalculateTaskAndProjectDates(projectPlan);
+        }
 
         return projectPlanMapper.toDTO(projectPlan);  // Return the saved project with tasks
     }
