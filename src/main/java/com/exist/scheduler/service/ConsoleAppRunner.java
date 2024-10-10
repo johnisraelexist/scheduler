@@ -44,7 +44,7 @@ public class ConsoleAppRunner implements CommandLineRunner {
 
             // Output each task in the project plan
             projectPlan.getTasks().forEach(task -> {
-                LocalDate[] taskDates = projectPlanService.calculateTaskDates(task);
+                LocalDate[] taskDates = projectPlanService.calculateTaskDates(task, LocalDate.now());
                 String taskStart = taskDates[0].format(formatter);
                 String taskEnd = taskDates[1].format(formatter);
                 logger.info(String.format("  Task: %1$s -> Start: %2$s, End: %3$s", task.getName(), taskStart, taskEnd));

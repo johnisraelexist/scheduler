@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Entity
@@ -29,6 +30,9 @@ public class Task {
     @ManyToOne
     @JoinColumn(name = "project_plan_id")
     private ProjectPlan projectPlan;
+
+    private LocalDate taskStartDate;
+    private LocalDate taskEndDate;
 
     // Constructors
     public Task() {}

@@ -7,6 +7,7 @@ import com.exist.scheduler.model.Task;
 import com.exist.scheduler.repository.TaskRepository;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -24,6 +25,23 @@ public class ProjectPlanMapper {
     public ProjectPlan toEntity(ProjectPlanDTO projectPlanDTO) {
         ProjectPlan projectPlan = new ProjectPlan();
         projectPlan.setName(projectPlanDTO.getName());
+        LocalDate projectStart = projectPlanDTO.getProjectStartDate() != null
+                ? projectPlanDTO.getProjectStartDate()
+                : LocalDate.now();
+        projectPlan.setProjectStartDate(projectStart);
+
+        if (projectPlanDTO.getTasks() != null && !projectPlanDTO.getTasks().isEmpty()) {
+            if (projectPlan.getTasks() == null) {
+                projectPlan.setTasks(new ArrayList<>());  // Initialize the task list if null
+            }
+            for (TaskDTO taskDTO : projectPlanDTO.getTasks()) {
+                taskDTO.setProjectPlanId(projectPlan.getId());
+                Task task = toTaskEntity(taskDTO, projectPlan);
+                taskRepository.save(task);
+                projectPlan.getTasks().add(task);
+            }
+        }
+
         return projectPlan;
     }
 

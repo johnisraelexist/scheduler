@@ -42,4 +42,28 @@ public class ProjectPlanController {
         ProjectPlanResponse projectPlanResponse = new ProjectPlanResponse(("All Project Plans"), projectPlanService.toProjectPlanDetails());
         return ResponseEntity.ok(projectPlanResponse);
     }
+
+    @PutMapping("/tasks/{taskId}")
+    public ResponseEntity<String> updateTask(@PathVariable Long taskId, @RequestBody TaskDTO taskDTO) {
+        projectPlanService.updateTask(taskId, taskDTO);
+        return ResponseEntity.ok("Task updated and affected dates recalculated.");
+    }
+
+    @PutMapping("/{projectId}")
+    public ResponseEntity<String> updateProject(@PathVariable Long projectId, @RequestBody ProjectPlanDTO projectPlanDTO) {
+        projectPlanService.updateProject(projectId, projectPlanDTO);
+        return ResponseEntity.ok("Project updated and affected dates recalculated.");
+    }
+
+    @DeleteMapping("/tasks/{taskId}")
+    public ResponseEntity<String> deleteTask(@PathVariable Long taskId) {
+        projectPlanService.deleteTask(taskId);
+        return ResponseEntity.ok("Task deleted.");
+    }
+
+    @DeleteMapping("/{projectId}")
+    public ResponseEntity<String> deleteProject(@PathVariable Long projectId) {
+        projectPlanService.deleteProject(projectId);
+        return ResponseEntity.ok("Project deleted.");
+    }
 }

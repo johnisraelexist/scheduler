@@ -45,23 +45,27 @@ class ProjectPlanServiceTest {
 
     // Test for creating a project plan with tasks
     @Test
-    void createProjectPlan_WithTasks() {
+    void testCreateProjectPlan() {
+        // Prepare mock data
         ProjectPlanDTO projectPlanDTO = new ProjectPlanDTO();
         projectPlanDTO.setName("New Project");
-        projectPlanDTO.setTasks(new ArrayList<>());
 
         ProjectPlan projectPlan = new ProjectPlan();
-        projectPlan.setId(1L);
+        projectPlan.setName("New Project");
+        projectPlan.setTasks(new ArrayList<>());  // Initialize the tasks list to avoid NullPointerException
 
-        when(projectPlanMapper.toEntity(any(ProjectPlanDTO.class))).thenReturn(projectPlan);
+        when(projectPlanMapper.toEntity(projectPlanDTO)).thenReturn(projectPlan);
         when(projectPlanRepository.save(any(ProjectPlan.class))).thenReturn(projectPlan);
         when(projectPlanMapper.toDTO(any(ProjectPlan.class))).thenReturn(projectPlanDTO);
 
-        ProjectPlanDTO savedProjectPlanDTO = projectPlanService.createProjectPlan(projectPlanDTO);
+        // Call the method under test
+        ProjectPlanDTO result = projectPlanService.createProjectPlan(projectPlanDTO);
 
-        assertNotNull(savedProjectPlanDTO);
-        assertEquals("New Project", savedProjectPlanDTO.getName());
+        // Assertions
+        assertEquals("New Project", result.getName());
         verify(projectPlanRepository, times(1)).save(any(ProjectPlan.class));
+        verify(projectPlanMapper, times(1)).toEntity(any(ProjectPlanDTO.class));
+        verify(projectPlanMapper, times(1)).toDTO(any(ProjectPlan.class));
     }
 
     // Test for adding a task to an existing project plan
@@ -159,5 +163,83 @@ class ProjectPlanServiceTest {
         assertNotNull(details);
         assertEquals(1, details.size());
         assertEquals("Test Project", details.get(0).getProjectPlanName());
+    }
+
+    @Test
+    void testUpdateTask() {
+        TaskDTO taskDTO = new TaskDTO();
+        taskDTO.setName("Updated Task");
+        taskDTO.setDuration(5);
+        taskDTO.setDependencies(new ArrayList<>());
+        taskDTO.setProjectPlanId(1L);
+
+        ProjectPlan projectPlan = new ProjectPlan();
+        projectPlan.setTasks(List.of());
+        projectPlanRepository.save(projectPlan);
+
+        Task task = new Task();
+        task.setId(4L);
+        task.setName("Old Task");
+        task.setProjectPlan(projectPlan);
+
+        when(taskRepository.findById(4L)).thenReturn(java.util.Optional.of(task));
+
+        // Call the method under test
+        projectPlanService.updateTask(4L, taskDTO);
+
+
+        // Assertions
+        assertEquals("Updated Task", task.getName());
+        assertEquals(5, task.getDuration());
+        verify(taskRepository, times(1)).findById(4L);
+        verify(taskRepository, times(1)).save(any(Task.class));
+    }
+
+    @Test
+    void testUpdateProject() {
+        // Prepare mock data
+        ProjectPlan projectPlan = new ProjectPlan();
+        projectPlan.setId(1L);
+        projectPlan.setName("Old Project");
+        projectPlan.setTasks(new ArrayList<>());  // Initialize the tasks list to avoid NullPointerException
+
+        ProjectPlanDTO projectPlanDTO = new ProjectPlanDTO();
+        projectPlanDTO.setName("Updated Project");
+        projectPlanDTO.setProjectStartDate(LocalDate.now());
+
+        when(projectPlanRepository.findById(1L)).thenReturn(java.util.Optional.of(projectPlan));
+
+        // Call the method under test
+        projectPlanService.updateProject(1L, projectPlanDTO);
+
+        // Assertions
+        assertEquals("Updated Project", projectPlan.getName());
+        assertEquals(LocalDate.now(), projectPlan.getProjectStartDate());
+        verify(projectPlanRepository, times(1)).findById(1L);
+        verify(projectPlanRepository, times(1)).save(any(ProjectPlan.class));
+    }
+
+    @Test
+    void testRecalculateTaskAndProjectDates() {
+        // Prepare mock data
+        ProjectPlan projectPlan = new ProjectPlan();
+        projectPlan.setProjectStartDate(LocalDate.of(2024, 10, 1));  // Initialize project start date
+        projectPlan.setTasks(new ArrayList<>());  // Initialize the tasks list
+
+        Task task1 = new Task("Task 1", 5, new ArrayList<>(), projectPlan);
+        Task task2 = new Task("Task 2", 10, List.of(task1), projectPlan);
+
+        projectPlan.getTasks().add(task1);  // Add tasks to the project
+        projectPlan.getTasks().add(task2);
+
+        // Call the method under test
+        projectPlanService.recalculateTaskAndProjectDates(projectPlan);
+
+        // Assertions: check if task and project dates are recalculated
+        assertNotNull(task1.getTaskStartDate());
+        assertNotNull(task1.getTaskEndDate());
+        assertNotNull(task2.getTaskStartDate());
+        assertNotNull(task2.getTaskEndDate());
+        assertEquals(task2.getTaskEndDate(), projectPlan.getProjectEndDate());
     }
 }
