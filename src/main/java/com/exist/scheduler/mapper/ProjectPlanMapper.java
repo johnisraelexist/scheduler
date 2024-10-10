@@ -63,13 +63,16 @@ public class ProjectPlanMapper {
     }
 
     // Convert ProjectPlan entity to ProjectPlanDTO
-    public ProjectPlanDTO toDTO(ProjectPlan projectPlan) {
+    public ProjectPlanDTO toProjectPlanDTO(ProjectPlan projectPlan) {
         ProjectPlanDTO projectPlanDTO = new ProjectPlanDTO();
         projectPlanDTO.setId(projectPlan.getId());
         projectPlanDTO.setName(projectPlan.getName());
+        projectPlanDTO.setProjectDuration(projectPlan.getProjectDuration());
+        projectPlanDTO.setProjectStartDate(projectPlan.getProjectStartDate());
+        projectPlanDTO.setProjectEndDate(projectPlan.getProjectEndDate());
 
         // Convert Tasks to TaskDTOs
-        if(projectPlanDTO.getTasks() != null && !projectPlanDTO.getTasks().isEmpty()) {
+        if(projectPlan.getTasks() != null && !projectPlan.getTasks().isEmpty()) {
             List<TaskDTO> taskDTOs = new ArrayList<>();
             for (Task task : projectPlan.getTasks()) {
                 taskDTOs.add(toTaskDTO(task));

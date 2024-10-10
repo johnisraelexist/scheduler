@@ -43,7 +43,7 @@ public class ProjectPlanService {
             recalculateTaskAndProjectDates(projectPlan);
         }
 
-        return projectPlanMapper.toDTO(projectPlan);  // Return the saved project with tasks
+        return projectPlanMapper.toProjectPlanDTO(projectPlan);  // Return the saved project with tasks
     }
 
     @Transactional
@@ -55,6 +55,7 @@ public class ProjectPlanService {
         Task task = projectPlanMapper.toTaskEntity(taskDTO, projectPlan);
         projectPlan.getTasks().add(task);
         taskRepository.save(task);
+        recalculateTaskAndProjectDates(projectPlan);
     }
 
     public LocalDate[] calculateProjectDates(ProjectPlan projectPlan) {
@@ -96,11 +97,13 @@ public class ProjectPlanService {
                 : LocalDate.now();
 
         // Calculate the start date based on dependencies
-        for (Task dependency : task.getDependencies()) {
-            LocalDate[] dependencyDates = calculateTaskDates(dependency, projectStartDate);
-            if (dependencyDates[1].isAfter(startDate)) {
-                // Start the current task the day after the latest dependency ends
-                startDate = dependencyDates[1].plusDays(1);
+        if (Optional.ofNullable(task.getDependencies()).isPresent()) {
+            for (Task dependency : task.getDependencies()) {
+                LocalDate[] dependencyDates = calculateTaskDates(dependency, projectStartDate);
+                if (dependencyDates[1].isAfter(startDate)) {
+                    // Start the current task the day after the latest dependency ends
+                    startDate = dependencyDates[1].plusDays(1);
+                }
             }
         }
 
@@ -117,7 +120,7 @@ public class ProjectPlanService {
 
     public ProjectPlanDTO getProjectPlanDTO(Long projectId) {
         ProjectPlan projectPlan = projectPlanRepository.findById(projectId).orElseThrow();
-        return projectPlanMapper.toDTO(projectPlan);
+        return projectPlanMapper.toProjectPlanDTO(projectPlan);
     }
 
     public List<ProjectPlanDetails> toProjectPlanDetails() {
@@ -126,33 +129,44 @@ public class ProjectPlanService {
         List<ProjectPlanDetails> projectPlanDetailsList = new ArrayList<>();
 
         for (ProjectPlan projectPlan : projectPlans) {
-            ProjectPlanDetails planDetails = new ProjectPlanDetails();
-            LocalDate[] projectDates = calculateProjectDates(projectPlan);
-            String projectStart = projectDates[0].format(formatter);
-            String projectEnd = projectDates[1].format(formatter);
 
-            long totalDuration = ChronoUnit.DAYS.between(projectDates[0], projectDates[1]);
+            ProjectPlanDetails planDetails = new ProjectPlanDetails();
 
             planDetails.setProjectPlanName(projectPlan.getName());
             planDetails.setProjectId(projectPlan.getId());
-            planDetails.setTotalDuration(totalDuration);
+            planDetails.setTotalDuration(projectPlan.getProjectDuration());
+
+            // Handle null projectStartDate and projectEndDate
+            String projectStart = (projectPlan.getProjectStartDate() != null)
+                    ? projectPlan.getProjectStartDate().format(formatter)
+                    : "N/A";
+            String projectEnd = (projectPlan.getProjectEndDate() != null)
+                    ? projectPlan.getProjectEndDate().format(formatter)
+                    : "N/A";
+
             planDetails.setProjectStart(projectStart);
             planDetails.setProjectEnd(projectEnd);
 
             List<TaskDetails> taskDetailsList = new ArrayList<>();
             for (Task task : projectPlan.getTasks()) {
                 TaskDetails taskDetails = new TaskDetails();
-                LocalDate[] taskDates = calculateTaskDates(task, projectDates[0]);
-                String taskStart = taskDates[0].format(formatter);
-                String taskEnd = taskDates[1].format(formatter);
 
                 taskDetails.setTaskName(task.getName());
                 taskDetails.setTaskId(task.getId());
                 taskDetails.setDuration(task.getDuration());
+
+                // Handle null taskStartDate and taskEndDate
+                String taskStart = (task.getTaskStartDate() != null)
+                        ? task.getTaskStartDate().format(formatter)
+                        : "N/A";
+                String taskEnd = (task.getTaskEndDate() != null)
+                        ? task.getTaskEndDate().format(formatter)
+                        : "N/A";
+
                 taskDetails.setStartDate(taskStart);
                 taskDetails.setEndDate(taskEnd);
 
-                // Get the dependencies directly from the task, no need to query
+                // Handle dependencies
                 List<String> dependencies = task.getDependencies().stream()
                         .map(Task::getName)
                         .toList();
@@ -224,28 +238,37 @@ public class ProjectPlanService {
     }
 
     public void recalculateTaskAndProjectDates(ProjectPlan projectPlan) {
-        LocalDate earliestStartDate = projectPlan.getProjectStartDate();
-        LocalDate latestEndDate = projectPlan.getProjectStartDate();
+        LocalDate earliestStartDate = Optional.ofNullable(projectPlan.getProjectStartDate())
+                .orElse(LocalDate.now());
+
+        LocalDate latestEndDate = Optional.ofNullable(projectPlan.getProjectStartDate())
+                .orElse(LocalDate.now());
 
         for (Task task : projectPlan.getTasks()) {
             LocalDate[] taskDates = calculateTaskDates(task, projectPlan.getProjectStartDate());
 
-            task.setTaskStartDate(taskDates[0]);
-            task.setTaskEndDate(taskDates[1]);
+            // Use Optional to handle nulls in taskDates and check both start and end dates
+            Optional<LocalDate> taskStartDate = Optional.ofNullable(taskDates[0]);
+            Optional<LocalDate> taskEndDate = Optional.ofNullable(taskDates[1]);
 
-            if (taskDates[0].isBefore(earliestStartDate)) {
-                earliestStartDate = taskDates[0];
-            }
+            taskStartDate.ifPresent(task::setTaskStartDate);  // Set task start date if present
+            taskEndDate.ifPresent(task::setTaskEndDate);  // Set task end date if present
 
-            if (taskDates[1].isAfter(latestEndDate)) {
-                latestEndDate = taskDates[1];
-            }
+            // Update the earliest start date
+            LocalDate finalEarliestStartDate = earliestStartDate;
+            earliestStartDate = taskStartDate
+                    .filter(startDate -> startDate.isBefore(finalEarliestStartDate))  // Check if task start is earlier
+                    .orElse(earliestStartDate);  // Keep current if not earlier
+
+            // Update the latest end date
+            LocalDate finalLatestEndDate = latestEndDate;
+            latestEndDate = taskEndDate
+                    .filter(endDate -> endDate.isAfter(finalLatestEndDate))  // Check if task end is later
+                    .orElse(latestEndDate);  // Keep current if not later
         }
-
         projectPlan.setProjectStartDate(earliestStartDate);
         projectPlan.setProjectEndDate(latestEndDate);
-        projectPlan.setProjectDuration(
-                earliestStartDate == null || latestEndDate == null ? 0 : Math.abs(ChronoUnit.DAYS.between(earliestStartDate, latestEndDate)));
+        projectPlan.setProjectDuration(Math.abs(ChronoUnit.DAYS.between(earliestStartDate, latestEndDate)));
     }
 
     public void deleteTask(Long taskId) {

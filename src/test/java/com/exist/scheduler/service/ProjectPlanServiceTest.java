@@ -56,7 +56,7 @@ class ProjectPlanServiceTest {
 
         when(projectPlanMapper.toEntity(projectPlanDTO)).thenReturn(projectPlan);
         when(projectPlanRepository.save(any(ProjectPlan.class))).thenReturn(projectPlan);
-        when(projectPlanMapper.toDTO(any(ProjectPlan.class))).thenReturn(projectPlanDTO);
+        when(projectPlanMapper.toProjectPlanDTO(any(ProjectPlan.class))).thenReturn(projectPlanDTO);
 
         // Call the method under test
         ProjectPlanDTO result = projectPlanService.createProjectPlan(projectPlanDTO);
@@ -65,7 +65,7 @@ class ProjectPlanServiceTest {
         assertEquals("New Project", result.getName());
         verify(projectPlanRepository, times(1)).save(any(ProjectPlan.class));
         verify(projectPlanMapper, times(1)).toEntity(any(ProjectPlanDTO.class));
-        verify(projectPlanMapper, times(1)).toDTO(any(ProjectPlan.class));
+        verify(projectPlanMapper, times(1)).toProjectPlanDTO(any(ProjectPlan.class));
     }
 
     // Test for adding a task to an existing project plan
@@ -74,6 +74,7 @@ class ProjectPlanServiceTest {
         TaskDTO taskDTO = new TaskDTO();
         taskDTO.setProjectPlanId(1L);
         taskDTO.setName("Task 1");
+        taskDTO.setDependencies(List.of());
 
         ProjectPlan projectPlan = new ProjectPlan();
         projectPlan.setId(1L);
@@ -142,27 +143,47 @@ class ProjectPlanServiceTest {
     // Test for converting ProjectPlan to ProjectPlanDetails
     @Test
     void toProjectPlanDetails() {
-        // Mock project plan
+
+        // Mock project plan with start and end dates
         ProjectPlan projectPlan = new ProjectPlan();
-        Task task = new Task();
-        task.setDuration(5);
-        List<Task> tasks1 = new ArrayList<>();
-        task.setDependencies(tasks1);
-        projectPlan.setTasks(List.of(task));
         projectPlan.setName("Test Project");
         projectPlan.setId(1L);
+        projectPlan.setProjectStartDate(LocalDate.of(2024, 1, 1)); // Mock start date
+        projectPlan.setProjectEndDate(null);   // Mock end date
+        projectPlan.setProjectDuration(31); // Mock duration
+
+        Task task = new Task();
+        task.setId(1L);
+        task.setName("Test Task");
+        task.setDuration(5);
+        task.setTaskStartDate(LocalDate.of(2024, 1, 1));  // Mock task start date
+        task.setTaskEndDate(null);    // Mock task end date
+        task.setDependencies(new ArrayList<>());  // No dependencies for simplicity
+
+        // Set tasks in project plan
+        projectPlan.setTasks(List.of(task));
+
+        // Mock the repository call
         when(projectPlanRepository.findAll()).thenReturn(List.of(projectPlan));
 
-        // Mock task details if needed
-        when(projectPlanMapper.toDTO(any())).thenReturn(new ProjectPlanDTO());
-
-        // Call the method
+        // Call the method under test
         List<ProjectPlanDetails> details = projectPlanService.toProjectPlanDetails();
 
         // Assertions
         assertNotNull(details);
         assertEquals(1, details.size());
         assertEquals("Test Project", details.get(0).getProjectPlanName());
+        assertEquals(1, details.get(0).getTasks().size());
+        assertEquals("Test Task", details.get(0).getTasks().get(0).getTaskName());
+
+        // Assert formatted dates
+        assertEquals("January 1, 2024", details.get(0).getProjectStart());
+        assertEquals("N/A", details.get(0).getProjectEnd());
+        assertEquals("January 1, 2024", details.get(0).getTasks().get(0).getStartDate());
+        assertEquals("N/A", details.get(0).getTasks().get(0).getEndDate());
+
+        // Assert task dependencies are empty (no dependencies were set)
+        assertTrue(details.get(0).getTasks().get(0).getDependencies().isEmpty());
     }
 
     @Test
