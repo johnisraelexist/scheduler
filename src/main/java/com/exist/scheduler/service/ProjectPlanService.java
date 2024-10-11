@@ -34,13 +34,11 @@ public class ProjectPlanService {
 
     @Transactional
     public ProjectPlanDTO createProjectPlan(ProjectPlanDTO projectPlanDTO) {
-        ProjectPlan projectPlan = projectPlanMapper.toEntity(projectPlanDTO);
-
-        projectPlan = projectPlanRepository.save(projectPlan);
+        ProjectPlan projectPlan = projectPlanMapper.toProjectPlanEntity(projectPlanDTO);
 
         // Recalculate task and project dates
         if (Optional.ofNullable(projectPlan.getTasks()).isPresent()) {
-            recalculateTaskAndProjectDates(projectPlan);
+            calculateTaskAndProjectDates(projectPlan);
         }
 
         return projectPlanMapper.toProjectPlanDTO(projectPlan);  // Return the saved project with tasks
@@ -55,11 +53,57 @@ public class ProjectPlanService {
         Task task = projectPlanMapper.toTaskEntity(taskDTO, projectPlan);
         projectPlan.getTasks().add(task);
         taskRepository.save(task);
-        recalculateTaskAndProjectDates(projectPlan);
+        calculateTaskAndProjectDates(projectPlan);
+    }
+
+    @Transactional
+    public void updateTask(Long taskId, TaskDTO taskDTO) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new NoSuchElementException(String.format("Task with ID: %s not found", taskId)));
+
+        Long projectPlanId = task.getProjectPlan().getId();
+        Long projectPlanIdNew = taskDTO.getProjectPlanId();
+
+        Optional<ProjectPlan> projectPlanOptional = projectPlanRepository.findById(projectPlanId);
+        Optional<ProjectPlan> projectPlanOptionalNew = projectPlanRepository.findById(projectPlanIdNew);
+
+        ProjectPlan projectPlan = projectPlanOptional.orElseThrow(()
+                -> new NoSuchElementException(String.format("Project not found with ID: %s not found", projectPlanId)));
+
+        ProjectPlan projectPlanNew = projectPlanOptionalNew.orElseThrow(()
+                -> new NoSuchElementException(String.format("Project not found with ID: %s not found", projectPlanIdNew)));
+
+        task.setName(taskDTO.getName());
+        task.setDuration(taskDTO.getDuration());
+        task.setProjectPlan(projectPlanNew);
+
+        task.setDependencies(projectPlanMapper.toTaskDependencies(taskDTO, projectPlanNew));
+
+        taskRepository.save(task);
+        projectPlan.getTasks().remove(task);
+        projectPlanNew.getTasks().add(task);
+
+        calculateTaskAndProjectDates(projectPlan);
+        calculateTaskAndProjectDates(projectPlanNew);
+
+    }
+
+    @Transactional
+    public void updateProject(Long projectId, ProjectPlanDTO projectPlanDTO) {
+        ProjectPlan projectPlan = projectPlanRepository.findById(projectId)
+                .orElseThrow(() -> new NoSuchElementException("Project Plan with ID: " + projectId + " not found"));
+
+        // Update project properties
+        projectPlan.setName(projectPlanDTO.getName());
+        projectPlan.setProjectStartDate(projectPlanDTO.getProjectStartDate());
+
+        // Recalculate project and task dates
+        calculateTaskAndProjectDates(projectPlan);
+
+        projectPlanRepository.save(projectPlan);  // Save updated project
     }
 
     public LocalDate[] calculateProjectDates(ProjectPlan projectPlan) {
-        // Use the project's start date if provided, otherwise use the current date
         LocalDate projectStart = projectPlan.getProjectStartDate() != null
                 ? projectPlan.getProjectStartDate()
                 : LocalDate.now();
@@ -92,14 +136,23 @@ public class ProjectPlanService {
 
 
     public LocalDate[] calculateTaskDates(Task task, LocalDate projectStartDate) {
-        LocalDate startDate = projectStartDate != null
-                ? projectStartDate
-                : LocalDate.now();
+        LocalDate startDate = projectStartDate != null ? projectStartDate : LocalDate.now();
+
+        // Set to keep track of visited tasks (to handle potential circular dependencies)
+        Set<Long> visitedTasks = new HashSet<>();
 
         // Calculate the start date based on dependencies
         if (Optional.ofNullable(task.getDependencies()).isPresent()) {
             for (Task dependency : task.getDependencies()) {
+                // Check for circular dependencies before recursion
+                if (!visitedTasks.add(dependency.getId())) {
+                    throw new IllegalStateException("Circular dependency detected for task: " + task.getId());
+                }
+
+                // Recursively calculate the dependency's start and end dates
                 LocalDate[] dependencyDates = calculateTaskDates(dependency, projectStartDate);
+
+                // Ensure the task starts the next working day after the latest dependency ends
                 if (dependencyDates[1].isAfter(startDate)) {
                     // Start the current task the day after the latest dependency ends
                     startDate = dependencyDates[1].plusDays(1);
@@ -107,21 +160,18 @@ public class ProjectPlanService {
             }
         }
 
-        // Calculate end date by adding the task's duration and skipping weekends
+        // Calculate end date by adding the task's duration and skipping weekends (assuming addWorkingDays handles weekends)
         LocalDate endDate = addWorkingDays(startDate, task.getDuration());
+
+        visitedTasks.remove(task.getId());
 
         return new LocalDate[]{startDate, endDate};
     }
-
 
     public List<ProjectPlan> getAllProjectPlans() {
         return projectPlanRepository.findAll();
     }
 
-    public ProjectPlanDTO getProjectPlanDTO(Long projectId) {
-        ProjectPlan projectPlan = projectPlanRepository.findById(projectId).orElseThrow();
-        return projectPlanMapper.toProjectPlanDTO(projectPlan);
-    }
 
     public List<ProjectPlanDetails> toProjectPlanDetails() {
         List<ProjectPlan> projectPlans = getAllProjectPlans();
@@ -137,7 +187,6 @@ public class ProjectPlanService {
             planDetails.setTotalDuration(projectPlan.getProjectDuration());
             planDetails.setTotalWorkingDays(projectPlan.getTotalWorkingDays());
 
-            // Handle null projectStartDate and projectEndDate
             String projectStart = (projectPlan.getProjectStartDate() != null)
                     ? projectPlan.getProjectStartDate().format(formatter)
                     : "N/A";
@@ -156,7 +205,6 @@ public class ProjectPlanService {
                 taskDetails.setTaskId(task.getId());
                 taskDetails.setDuration(task.getDuration());
 
-                // Handle null taskStartDate and taskEndDate
                 String taskStart = (task.getTaskStartDate() != null)
                         ? task.getTaskStartDate().format(formatter)
                         : "N/A";
@@ -167,7 +215,6 @@ public class ProjectPlanService {
                 taskDetails.setStartDate(taskStart);
                 taskDetails.setEndDate(taskEnd);
 
-                // Handle dependencies
                 List<String> dependencies = task.getDependencies().stream()
                         .map(Task::getName)
                         .toList();
@@ -175,6 +222,13 @@ public class ProjectPlanService {
                 taskDetails.setDependencies(dependencies);
                 taskDetailsList.add(taskDetails);
             }
+
+            // Sort the taskDetailsList by start date (earliest to latest)
+            taskDetailsList.sort(Comparator.comparing(
+                    taskDetails -> LocalDate.parse(
+                            taskDetails.getStartDate(), formatter),
+                    Comparator.nullsLast(Comparator.naturalOrder())));
+
             planDetails.setTasks(taskDetailsList);
             projectPlanDetailsList.add(planDetails);
         }
@@ -199,46 +253,7 @@ public class ProjectPlanService {
         return resultDate;  // Return the last working day as the end date
     }
 
-    @Transactional
-    public void updateTask(Long taskId, TaskDTO taskDTO) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new NoSuchElementException(String.format("Task with ID: %s not found", taskId)));
-
-        // Update task properties
-        task.setName(taskDTO.getName());
-        task.setDuration(taskDTO.getDuration());
-
-        // Update task dependencies
-        List<Task> dependencies = new ArrayList<>();
-        for (Long depId : taskDTO.getDependencies()) {
-            Task dependency = taskRepository.findById(depId)
-                    .orElseThrow(() -> new NoSuchElementException(String.format("Task with ID: %s not found", depId)));
-            dependencies.add(dependency);
-        }
-        task.setDependencies(dependencies);
-
-        // Recalculate the start and end dates
-        recalculateTaskAndProjectDates(task.getProjectPlan());
-
-        taskRepository.save(task);  // Save updated task
-    }
-
-    @Transactional
-    public void updateProject(Long projectId, ProjectPlanDTO projectPlanDTO) {
-        ProjectPlan projectPlan = projectPlanRepository.findById(projectId)
-                .orElseThrow(() -> new NoSuchElementException("Project Plan with ID: " + projectId + " not found"));
-
-        // Update project properties
-        projectPlan.setName(projectPlanDTO.getName());
-        projectPlan.setProjectStartDate(projectPlanDTO.getProjectStartDate());
-
-        // Recalculate project and task dates
-        recalculateTaskAndProjectDates(projectPlan);
-
-        projectPlanRepository.save(projectPlan);  // Save updated project
-    }
-
-    public void recalculateTaskAndProjectDates(ProjectPlan projectPlan) {
+    public void calculateTaskAndProjectDates(ProjectPlan projectPlan) {
         LocalDate earliestStartDate = Optional.ofNullable(projectPlan.getProjectStartDate())
                 .orElse(LocalDate.now());
 
@@ -248,24 +263,23 @@ public class ProjectPlanService {
         for (Task task : projectPlan.getTasks()) {
             LocalDate[] taskDates = calculateTaskDates(task, projectPlan.getProjectStartDate());
 
-            // Use Optional to handle nulls in taskDates and check both start and end dates
             Optional<LocalDate> taskStartDate = Optional.ofNullable(taskDates[0]);
             Optional<LocalDate> taskEndDate = Optional.ofNullable(taskDates[1]);
 
-            taskStartDate.ifPresent(task::setTaskStartDate);  // Set task start date if present
-            taskEndDate.ifPresent(task::setTaskEndDate);  // Set task end date if present
+            taskStartDate.ifPresent(task::setTaskStartDate);
+            taskEndDate.ifPresent(task::setTaskEndDate);
 
             // Update the earliest start date
             LocalDate finalEarliestStartDate = earliestStartDate;
             earliestStartDate = taskStartDate
-                    .filter(startDate -> startDate.isBefore(finalEarliestStartDate))  // Check if task start is earlier
-                    .orElse(earliestStartDate);  // Keep current if not earlier
+                    .filter(startDate -> startDate.isBefore(finalEarliestStartDate))
+                    .orElse(earliestStartDate);
 
             // Update the latest end date
             LocalDate finalLatestEndDate = latestEndDate;
             latestEndDate = taskEndDate
-                    .filter(endDate -> endDate.isAfter(finalLatestEndDate))  // Check if task end is later
-                    .orElse(latestEndDate);  // Keep current if not later
+                    .filter(endDate -> endDate.isAfter(finalLatestEndDate))
+                    .orElse(latestEndDate);
         }
 
         // Compute the total number of working days (excluding weekends)

@@ -78,7 +78,7 @@ class ProjectPlanControllerTest {
         mockMvc.perform(post("/api/projects/add-task")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
-                .andExpect(status().isNotFound())
+                .andExpect(status().isBadRequest())
                 .andExpect(content().string("Project Plan with ID 1 not found"))
                 .andDo(print());
     }

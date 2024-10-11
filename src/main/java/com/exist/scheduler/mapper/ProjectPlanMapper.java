@@ -4,31 +4,36 @@ import com.exist.scheduler.dto.ProjectPlanDTO;
 import com.exist.scheduler.dto.TaskDTO;
 import com.exist.scheduler.model.ProjectPlan;
 import com.exist.scheduler.model.Task;
+import com.exist.scheduler.repository.ProjectPlanRepository;
 import com.exist.scheduler.repository.TaskRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 @Component
 public class ProjectPlanMapper {
 
-    private final TaskRepository taskRepository;
+    @Autowired
+    private TaskRepository taskRepository;
 
-    public ProjectPlanMapper(TaskRepository taskRepository) {
-        this.taskRepository = taskRepository;
-    }
+    @Autowired
+    private ProjectPlanRepository projectPlanRepository;
 
     // Convert ProjectPlanDTO to ProjectPlan entity
-    public ProjectPlan toEntity(ProjectPlanDTO projectPlanDTO) {
+    public ProjectPlan toProjectPlanEntity(ProjectPlanDTO projectPlanDTO) {
         ProjectPlan projectPlan = new ProjectPlan();
         projectPlan.setName(projectPlanDTO.getName());
         LocalDate projectStart = projectPlanDTO.getProjectStartDate() != null
                 ? projectPlanDTO.getProjectStartDate()
                 : LocalDate.now();
         projectPlan.setProjectStartDate(projectStart);
+
+        projectPlan = projectPlanRepository.save(projectPlan);
 
         if (projectPlanDTO.getTasks() != null && !projectPlanDTO.getTasks().isEmpty()) {
             if (projectPlan.getTasks() == null) {
@@ -47,19 +52,36 @@ public class ProjectPlanMapper {
 
     // Convert TaskDTO to Task entity
     public Task toTaskEntity(TaskDTO taskDTO, ProjectPlan projectPlan) {
+        List<Task> dependencies = toTaskDependencies(taskDTO, projectPlan);
+
+        return new Task(taskDTO.getName(), taskDTO.getDuration(), dependencies, projectPlan);
+    }
+
+    public List<Task> toTaskDependencies (TaskDTO taskDTO, ProjectPlan projectPlan){
         List<Task> dependencies = new ArrayList<>();
 
-        // Convert task dependency IDs to Task entities
         for (Long depId : taskDTO.getDependencies()) {
-            // Find each dependency by its ID from the repository
             Task dependency = taskRepository.findById(depId)
                     .orElseThrow(() -> new NoSuchElementException(
                             String.format("Task with ID: %s not found", depId)));
+
+            Long dependencyProjectId = Optional.ofNullable(dependency.getProjectPlan())
+                    .map(ProjectPlan::getId)
+                    .orElseThrow(() -> new NoSuchElementException(
+                            String.format("Task with ID: %s has no project plan", depId)));
+
+            Long currentProjectId = Optional.ofNullable(projectPlan.getId())
+                    .orElseThrow(() -> new NoSuchElementException("Current task's project plan has no ID"));
+
+            if (!dependencyProjectId.equals(currentProjectId)) {
+                throw new NoSuchElementException(
+                        String.format("Task with ID: %s belongs to a different project", depId));
+            }
+
             dependencies.add(dependency);
         }
 
-        // Create new Task with dependencies and project plan reference
-        return new Task(taskDTO.getName(), taskDTO.getDuration(), dependencies, projectPlan);
+        return dependencies;
     }
 
     // Convert ProjectPlan entity to ProjectPlanDTO

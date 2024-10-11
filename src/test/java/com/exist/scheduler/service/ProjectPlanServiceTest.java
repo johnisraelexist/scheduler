@@ -59,7 +59,7 @@ class ProjectPlanServiceTest {
         projectPlan.setName("New Project");
         projectPlan.setTasks(new ArrayList<>());  // Initialize the tasks list to avoid NullPointerException
 
-        when(projectPlanMapper.toEntity(projectPlanDTO)).thenReturn(projectPlan);
+        when(projectPlanMapper.toProjectPlanEntity(projectPlanDTO)).thenReturn(projectPlan);
         when(projectPlanRepository.save(any(ProjectPlan.class))).thenReturn(projectPlan);
         when(projectPlanMapper.toProjectPlanDTO(any(ProjectPlan.class))).thenReturn(projectPlanDTO);
 
@@ -68,8 +68,7 @@ class ProjectPlanServiceTest {
 
         // Assertions
         assertEquals("New Project", result.getName());
-        verify(projectPlanRepository, times(1)).save(any(ProjectPlan.class));
-        verify(projectPlanMapper, times(1)).toEntity(any(ProjectPlanDTO.class));
+        verify(projectPlanMapper, times(1)).toProjectPlanEntity(any(ProjectPlanDTO.class));
         verify(projectPlanMapper, times(1)).toProjectPlanDTO(any(ProjectPlan.class));
     }
 
@@ -200,7 +199,8 @@ class ProjectPlanServiceTest {
         taskDTO.setProjectPlanId(1L);
 
         ProjectPlan projectPlan = new ProjectPlan();
-        projectPlan.setTasks(List.of());
+        projectPlan.setId(1L);
+        projectPlan.setTasks(new ArrayList<>());
         projectPlanRepository.save(projectPlan);
 
         Task task = new Task();
@@ -209,10 +209,10 @@ class ProjectPlanServiceTest {
         task.setProjectPlan(projectPlan);
 
         when(taskRepository.findById(4L)).thenReturn(java.util.Optional.of(task));
+        when(projectPlanRepository.findById(anyLong())).thenReturn(java.util.Optional.of(projectPlan));
 
         // Call the method under test
         projectPlanService.updateTask(4L, taskDTO);
-
 
         // Assertions
         assertEquals("Updated Task", task.getName());
@@ -246,7 +246,7 @@ class ProjectPlanServiceTest {
     }
 
     @Test
-    void testRecalculateTaskAndProjectDates() {
+    void testCalculateTaskAndProjectDates() {
         // Prepare mock data
         ProjectPlan projectPlan = new ProjectPlan();
         projectPlan.setProjectStartDate(LocalDate.of(2024, 10, 1));  // Initialize project start date
@@ -259,7 +259,7 @@ class ProjectPlanServiceTest {
         projectPlan.getTasks().add(task2);
 
         // Call the method under test
-        projectPlanService.recalculateTaskAndProjectDates(projectPlan);
+        projectPlanService.calculateTaskAndProjectDates(projectPlan);
 
         // Assertions: check if task and project dates are recalculated
         assertNotNull(task1.getTaskStartDate());

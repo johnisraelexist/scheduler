@@ -21,8 +21,12 @@ public class ProjectPlanController {
 
     @PostMapping("/create")
     public ResponseEntity<String> createProjectPlan(@RequestBody ProjectPlanDTO projectPlanDTO) {
-        ProjectPlanDTO savedProject = projectPlanService.createProjectPlan(projectPlanDTO);
-        return ResponseEntity.ok(String.format("Project plan created with ID: %s", savedProject.getId()));
+        try {
+            ProjectPlanDTO savedProject = projectPlanService.createProjectPlan(projectPlanDTO);
+            return ResponseEntity.ok(String.format("Project plan created with ID: %s", savedProject.getId()));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
     }
 
     @PostMapping("/add-task")
@@ -31,7 +35,7 @@ public class ProjectPlanController {
             projectPlanService.addTaskToProjectPlan(taskDTO);
             return ResponseEntity.ok("Task added to project plan with ID: " + taskDTO.getProjectPlanId());
         } catch (NoSuchElementException e) {
-            return ResponseEntity.status(404).body(e.getMessage());
+            return ResponseEntity.status(400).body(e.getMessage());
         }
     }
 
@@ -43,8 +47,12 @@ public class ProjectPlanController {
 
     @PutMapping("/tasks/{taskId}")
     public ResponseEntity<String> updateTask(@PathVariable Long taskId, @RequestBody TaskDTO taskDTO) {
+        try {
         projectPlanService.updateTask(taskId, taskDTO);
         return ResponseEntity.ok("Task updated and affected dates recalculated.");
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
     }
 
     @PutMapping("/{projectId}")
