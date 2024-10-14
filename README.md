@@ -26,9 +26,9 @@
 
 ## API Endpoints
 The following endpoints are available for managing project plans and tasks.  
-You can test these enpoints via postman, this is the postman collection: https://api.postman.com/collections/38882669-acd07b5f-d8ed-42d4-b7a7-75cacf12edf5?access_key=PMAT-01J9TD8AK51YNFDHN1ZVSJFZNF
-Base URL: http://localhost:8080/api/projects  
-  1. Create a Project Plan with tasks  
+You can test these enpoints via postman, this is the postman collection: https://api.postman.com/collections/38882669-acd07b5f-d8ed-42d4-b7a7-75cacf12edf5?access_key=PMAT-01J9TD8AK51YNFDHN1ZVSJFZNF  
+### Base URL: http://localhost:8080/api/projects  
+  ### 1. Create a Project Plan with tasks
       Endpoint: /create  
       Method: POST  
       Description: Creates a new project plan.  
@@ -61,75 +61,84 @@ Base URL: http://localhost:8080/api/projects
       Sample Response:  
       HTTP 200 OK  
       Project plan created with ID: {projectId}  
+      
+      Note: You can create a project with no tasks.  
+      Sample Request:  
+        {  
+          "name": "E-commerce Website",  
+          "projectStartDate": "2024-10-15",  
+          "tasks": [  
+          ]  
+        }  
 
-  2. Add a Task to a Project Plan
-      Endpoint: /add-task
-      Method: POST
-      Description: Adds a task to an existing project plan.
-      Sample Request Body:
-      {
-        "projectPlanId": 1,
-        "name": "Task 1",
-        "description": "Details about the task",
-        "startDate": "2024-10-15",
-        "endDate": "2024-11-15"
-      }
-      Sample Response:
-      HTTP 200 OK
-      Task added to project plan with ID: {projectPlanId}
+  ### 2. Add a Task to a Project Plan  
+      Endpoint: /add-task  
+      Method: POST  
+      Description: Adds a task to an existing project plan.  
+      Sample Request Body:  
+      {  
+        "projectPlanId": 1,  
+        "name": "Task 1",  
+        "description": "Details about the task",  
+        "startDate": "2024-10-15",  
+        "endDate": "2024-11-15"  
+      }  
+      Sample Response:  
+      HTTP 200 OK  
+      Task added to project plan with ID: {projectPlanId}  
      
-  3. Retrieve All Project Plans
-      Endpoint: /retrieve-all
-      Method: GET
-      Description: Fetches all project plans.
-      No Request Body
-      Response will be all the project plans
+  ### 3. Retrieve All Project Plans  
+      Endpoint: /retrieve-all  
+      Method: GET  
+      Description: Fetches all project plans.  
+      No Request Body  
+      Response will be all the project plans  
      
-  4. Update a Task
-      Endpoint: /tasks/{taskId}
-      Method: PUT
-      Description: Updates an existing task and recalculates affected dates.
-      Path Variable: taskId - The ID of the task to update.
-      Sample Request Body:
-      {
-        "name": "Updated Testing",
-        "duration": 7,
-        "dependencies": [6], 
-        "projectPlanId": 2
-       }
-      Response:
-      HTTP 200 OK
-      Task updated and affected dates recalculated.
+  ### 4. Update a Task  
+      Endpoint: /tasks/{taskId}  
+      Method: PUT  
+      Description: Updates an existing task and recalculates affected dates.  
+      Path Variable: taskId - The ID of the task to update.  
+      Sample Request Body:  
+      {  
+        "name": "Updated Testing",  
+        "duration": 7,  
+        "dependencies": [6],  
+        "projectPlanId": 2  
+       }  
+      Response:  
+      HTTP 200 OK  
+      Task updated and affected dates recalculated.  
   
-  5. Update a Project
-      Endpoint: /{projectId}
-      Method: PUT
-      Description: Updates an existing project plan and recalculates affected dates.
-      Path Variable: projectId - The ID of the project to update.
-      Sample Request Body:
-      {
-        "name": "Updated Website Project",
-        "projectStartDate": "2024-10-15"
-      }
-      Sample Response:
-      HTTP 200 OK
-      Project updated and affected dates recalculated.
+  ### 5. Update a Project  
+      Endpoint: /{projectId}  
+      Method: PUT  
+      Description: Updates an existing project plan and recalculates affected dates.  
+      Path Variable: projectId - The ID of the project to update.  
+      Sample Request Body:  
+      {  
+        "name": "Updated Website Project",  
+        "projectStartDate": "2024-10-15"  
+      }  
+      Sample Response:  
+      HTTP 200 OK  
+      Project updated and affected dates recalculated.  
   
-  6. Delete a Task
-      Endpoint: /tasks/{taskId}
-      Method: DELETE
-      Description: Deletes a specific task from a project plan.
-      Path Variable: taskId - The ID of the task to delete.
-      Sample Response:
-      HTTP 200 OK
-      Task deleted.
+  ### 6. Delete a Task  
+      Endpoint: /tasks/{taskId}  
+      Method: DELETE  
+      Description: Deletes a specific task from a project plan.  
+      Path Variable: taskId - The ID of the task to delete.  
+      Sample Response:  
+      HTTP 200 OK  
+      Task deleted.  
 
-  8. Delete a Project
-      Endpoint: /{projectId}
-      Method: DELETE
-      Description: Deletes a specific project plan.
-      Path Variable:projectId - The ID of the project to delete.
-      Sample Response:
+  ### 7. Delete a Project  
+      Endpoint: /{projectId}  
+      Method: DELETE  
+      Description: Deletes a specific project plan.  
+      Path Variable:projectId - The ID of the project to delete.  
+      Sample Response:  
       HTTP 200 OK  
       Project deleted.  
 
